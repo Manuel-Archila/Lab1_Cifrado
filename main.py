@@ -220,7 +220,8 @@ while start:
         distribuciones = calcular_distribucion(ceasar_encrypted)
         brute_force_cesar(distribuciones, probabilidad_real, ceasar_encrypted)
         brute_force_afin(afin_encrypted)
-        brute_force_vigenere(vigenere_encrypted)
+        # DESCOMENTAR ESTA PARTE PARA PROBAR EL CIFRADO DE VIGENERE
+        # brute_force_vigenere(vigenere_encrypted)
 
         print("Cifrado Cesar")
         print("Desplazamiento 19")
