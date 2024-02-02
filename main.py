@@ -3,11 +3,12 @@ from Cifrados.Afin import Afin
 from Cifrados.Vigenere import Vigenere
 import unicodedata
 import matplotlib.pyplot as plt
+import itertools
 
 # 1 Cifrar
 # 2 Frecuencias
 # 3 Ordenar de mayor a menor
-# 
+# 4 Definir el desplazamiento
 
 
 
@@ -31,11 +32,80 @@ def crear_histograma(distribuciones, probabilidad_real):
 
     plt.show()
 
-# def brute_force(distribuciones, probabilidad_real):
-#     distribuciones_ordenadas = dict(sorted(distribuciones.items(), key=lambda item: item[1], reverse=True))
-#     probabilidad_real_ordenada = dict(sorted(probabilidad_real.items(), key=lambda item: item[1], reverse=True))
-#     # print(distribuciones_ordenadas)
-#     print(probabilidad_real_ordenada)
+def brute_force_cesar(distribuciones, probabilidad_real, mensaje_cifrado):
+    letras = 'ABCDEFGHIJKLMNÑOPQRSTUVWXYZ'
+    letra_mas_frecuente_dist = max(distribuciones, key=distribuciones.get)
+    letra_mas_frecuente_real = max(probabilidad_real, key=probabilidad_real.get)
+
+    desplazamiento_inicial = (letras.index(letra_mas_frecuente_real) - letras.index(letra_mas_frecuente_dist)) % len(letras)
+    print(f"Desplazamiento inicial: {desplazamiento_inicial}")
+    indice_inicial = letras[letras.index(letra_mas_frecuente_real) - desplazamiento_inicial]
+
+    # Probando desplazamientos a partir del desplazamiento inicial
+    with open('ceasar.txt', 'w', encoding='utf-8') as file:
+        for i in range(len(letras)):
+            desplazamiento_actual = (desplazamiento_inicial + i) % len(letras)
+            cesar = Ceasar(desplazamiento_actual)
+            mensaje_descifrado = cesar.decrypt(mensaje_cifrado)
+            file.write(f"Desplazamiento: {desplazamiento_actual} - Mensaje: {mensaje_descifrado}\n")
+    
+def brute_force_afin(mensaje_cifrado):
+    letras = 'ABCDEFGHIJKLMNÑOPQRSTUVWXYZ'
+    with open('afin.txt', 'w', encoding='utf-8') as file:
+        for i in range(len(letras)):
+            for j in range(len(letras)):
+                try:
+                    afin = Afin(i+1, j+1)
+                    mensaje_descifrado = afin.decrypt(mensaje_cifrado)
+                    file.write(f"Multiplicador: {i+1}, Offset: {j+1} - Mensaje: {mensaje_descifrado}\n")
+                except:
+                    pass
+                    #print(f"ERROR: Multiplicador: {i+1}, Offset: {j+1} - Mensaje: {mensaje_descifrado}")
+
+def calcular_indices_de_coincidencia(texto_cifrado, max_key_length=10):
+    texto_cifrado = texto_cifrado.replace(" ", "").upper()
+    longitud = len(texto_cifrado)
+    indices_de_coincidencia = []
+
+    # Compara el texto con una versión desplazada de sí mismo
+    for desplazamiento in range(1, max_key_length + 1):
+        coincidencias = 0
+        for i in range(longitud - desplazamiento):
+            if texto_cifrado[i] == texto_cifrado[i + desplazamiento]:
+                coincidencias += 1
+        indices_de_coincidencia.append((desplazamiento, coincidencias))
+
+    return indices_de_coincidencia
+
+def clave_vigenere(texto_cifrado):
+    indices = calcular_indices_de_coincidencia(texto_cifrado)
+    key_length = 0
+    max_coincidencias = 0
+    for i in range(len(indices)):
+        if indices[i][1] > max_coincidencias:
+            max_coincidencias = indices[i][1]
+            key_length = indices[i][0]
+        else:
+            break
+    return key_length
+
+            
+def brute_force_vigenere(mensaje_cifrado):
+    letras = 'ABCDEFGHIJKLMNÑOPQRSTUVWXYZ'
+    key_length = clave_vigenere(mensaje_cifrado)
+    print(f"Longitud de clave: {key_length}")
+
+    
+
+    with open('vigenere.txt', 'w', encoding='utf-8') as file:
+        for key in itertools.product(letras, repeat=key_length):
+
+            possible_key = ''.join(key)
+            decrypted_text = Vigenere(possible_key).decrypt(mensaje_cifrado)
+            # Aquí puedes implementar una verificación para ver si el texto descifrado tiene sentido
+            file.write(f"Clave probada: {possible_key} -> Mensaje: {decrypted_text}\n")
+
+
 
 
 def clean_message(message):
@@ -80,7 +150,8 @@ while start:
     print("1. Cifrado Cesar")
     print("2. Cifrado Afin")
     print("3. Cifrado Vigenere")
-    print("4. Salir")
+    print("4. Probar archivos predefinidos")
+    print("5. Salir")
 
     # try:
     option = int(input("Opcion: "))
@@ -96,8 +167,8 @@ while start:
         print("Mensaje descifrado: " + decrypted + "\n")
         distribuciones = calcular_distribucion(encrypted)
         crear_histograma(distribuciones, probabilidad_real)
-        # #Lab 1 parte B
-        # brute_force(distribuciones, probabilidad_real)
+        #Lab 1 parte B
+        brute_force_cesar(distribuciones, probabilidad_real, encrypted)
 
 
     elif option == 2:
@@ -113,6 +184,8 @@ while start:
         print("Mensaje descifrado: " + decrypted + "\n")
         distribuciones = calcular_distribucion(encrypted)
         crear_histograma(distribuciones, probabilidad_real)
+        #Lab 1 parte B
+        brute_force_afin(encrypted)
 
     elif option == 3:
             keyword = input("Ingrese la palabra clave: ")
@@ -125,7 +198,39 @@ while start:
             print("Mensaje descifrado: " + decrypted + "\n")
             distribuciones = calcular_distribucion(encrypted)
             crear_histograma(distribuciones, probabilidad_real)
+            #Lab 1 parte B
+            brute_force_vigenere(encrypted, 5)
+    
     elif option == 4:
+        ceasar_encrypted = ''
+        afin_encrypted = ''
+        vigenere_encrypted = ''
+        with open('./texts/cipher1.txt', 'r', encoding='utf-8') as archivo:
+            ceasar_encrypted = archivo.read()
+        
+        with open('./texts/cipher2.txt', 'r', encoding='utf-8') as archivo:
+            afin_encrypted = archivo.read()
+        
+        with open('./texts/cipher3.txt', 'r', encoding='utf-8') as archivo:
+            vigenere_encrypted = archivo.read()
+        
+        #print(ceasar_encrypted)
+        #print(afin_encrypted)
+        #print(vigenere_encrypted)
+        distribuciones = calcular_distribucion(ceasar_encrypted)
+        brute_force_cesar(distribuciones, probabilidad_real, ceasar_encrypted)
+        brute_force_afin(afin_encrypted)
+        brute_force_vigenere(vigenere_encrypted)
+
+        print("Cifrado Cesar")
+        print("Desplazamiento 19")
+        print("Cifrado afin")
+        print("Multiplicador 23, Offset 7")
+        print("Cifrado Vigenere")
+        print("Clave: BEES")
+
+
+    elif option == 5:
         start = False
         print("Saliendo...")
     else:
